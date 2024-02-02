@@ -58,45 +58,11 @@
 	  <Private>True</Private>
 	  <SpecificVersion>True</SpecificVersion>
 	</Reference>
-	<Reference Include="BepInEx, Version=5.4.22.0, Culture=neutral, processorArchitecture=MSIL">
-		<HintPath>..\packages\IllusionLibs.BepInEx.5.4.22\lib\net35\BepInEx.dll</HintPath>
-		<Private>False</Private>
+	<Reference Include="IL, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+	  <HintPath>..\packages\IllusionLibs.HoneySelect2.IL.2020.5.29.4\lib\net46\IL.dll</HintPath>
+	  <Private>True</Private>
+	  <SpecificVersion>True</SpecificVersion>
 	</Reference>
-    <Reference Include="HS2ABMX, Version=5.0.6.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\packages\ABMX.HS2ABMX.5.0.6\lib\net46\HS2ABMX.dll</HintPath>
-      <Private>True</Private>
-      <SpecificVersion>True</SpecificVersion>
-    </Reference>
-    <Reference Include="HS2API, Version=1.36.0.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\packages\IllusionModdingAPI.HS2API.1.36.0\lib\net46\HS2API.dll</HintPath>
-      <Private>True</Private>
-      <SpecificVersion>True</SpecificVersion>
-    </Reference>
-    <Reference Include="HS2API, Version=1.36.0.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\packages\IllusionModdingAPI.HS2API.1.36.0\lib\net46\HS2API.dll</HintPath>
-      <SpecificVersion>False</SpecificVersion>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="HS2_ExtensibleSaveFormat, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\packages\ExtensibleSaveFormat.HoneySelect2.19.3.0\lib\net46\HS2_ExtensibleSaveFormat.dll</HintPath>
-      <Private>True</Private>
-      <SpecificVersion>True</SpecificVersion>
-    </Reference>
-    <Reference Include="IL, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\packages\IllusionLibs.HoneySelect2.IL.2020.5.29.4\lib\net46\IL.dll</HintPath>
-      <Private>True</Private>
-      <SpecificVersion>True</SpecificVersion>
-    </Reference>
-    <Reference Include="Sirenix.Serialization, Version=2.0.13.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\packages\IllusionLibs.HoneySelect2.Sirenix.Serialization.2020.5.29.4\lib\net46\Sirenix.Serialization.dll</HintPath>
-      <Private>True</Private>
-      <SpecificVersion>True</SpecificVersion>
-    </Reference>
-    <Reference Include="UniRx, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\packages\IllusionLibs.HoneySelect2.UniRx.2020.5.29.4\lib\net46\UniRx.dll</HintPath>
-      <Private>True</Private>
-      <SpecificVersion>True</SpecificVersion>
-    </Reference>
     <Reference Include="Unity.TextMeshPro, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
       <HintPath>..\packages\IllusionLibs.HoneySelect2.Unity.TextMeshPro.2018.4.11.4\lib\net46\Unity.TextMeshPro.dll</HintPath>
       <Private>True</Private>
@@ -114,16 +80,6 @@
     </Reference>	  
 	<Reference Include="UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
       <HintPath>..\packages\IllusionLibs.HoneySelect2.UnityEngine.CoreModule.2018.4.11.4\lib\net46\UnityEngine.CoreModule.dll</HintPath>
-      <Private>True</Private>
-      <SpecificVersion>True</SpecificVersion>
-    </Reference>
-    <Reference Include="UnityEngine.ImageConversionModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\packages\IllusionLibs.HoneySelect2.UnityEngine.ImageConversionModule.2018.4.11.4\lib\net46\UnityEngine.ImageConversionModule.dll</HintPath>
-      <Private>True</Private>
-      <SpecificVersion>True</SpecificVersion>
-    </Reference>
-    <Reference Include="UnityEngine.IMGUIModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\packages\IllusionLibs.HoneySelect2.UnityEngine.IMGUIModule.2018.4.11.4\lib\net46\UnityEngine.IMGUIModule.dll</HintPath>
       <Private>True</Private>
       <SpecificVersion>True</SpecificVersion>
     </Reference>

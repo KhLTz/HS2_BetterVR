@@ -1,6 +1,7 @@
 using HarmonyLib;
 using HS2VR;
 using Manager;
+using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
@@ -140,6 +141,20 @@ namespace BetterVR
         {
             BetterVRPluginHelper.UpdatePrivacyScreen(Color.black);
         }
+
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(HitObjectCtrl), "SetObiColliderPhase")]
+        private static void HitObjectCtrlFix(HitObjectCtrl __instance, GameObject obj, int i)
+        {
+            if (obj == null) return;
+            var colliders = (Dictionary<int, Obi.ObiCollider[]>)typeof(HitObjectCtrl).GetField("lstObjectCols", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(__instance);
+            if (colliders == null || colliders.ContainsKey(i)) return;
+
+            BetterVRPlugin.Logger.LogWarning("Adding missing ObiColliders in HitObjectCtrl for obj " + i);
+
+            colliders.Add(i, obj.GetComponentsInChildren<Obi.ObiCollider>(true));
+        }
+
 
         [HarmonyPostfix]
         [HarmonyPatch(typeof(OpenUICrtl), "Start")]

@@ -39,7 +39,7 @@ namespace BetterVR
             // BetterVRPluginHelper.GetRightHand()?.GetComponentInChildren<GuideLineDrawer>();
             // if (raycaster.transform.parent?.parent != controllerModel)
 
-             if (controller.transform.Find("LaserPointer") == null) return;
+            if (controller.transform.Find("LaserPointer") == null) return;
 
             var oldAngles = raycaster.transform.localRotation.eulerAngles;
 
@@ -51,8 +51,24 @@ namespace BetterVR
 
             BetterVRPlugin.Logger.LogInfo("Updated laser pointer rotation: " + oldAngles + " -> " + raycaster.transform.localRotation.eulerAngles);
 
-            var stabilizer = raycaster.GetComponentInParent<HTC.UnityPlugin.PoseTracker.PoseStablizer>();
-            if (stabilizer)
+            UpdateStabilizer(controller);
+        }
+
+        internal static void UpdateStabilizer(GameObject controller)
+        {
+            var stabilizer = 
+                controller?.
+                GetComponentInChildren<HTC.UnityPlugin.Pointer3D.Pointer3DRaycaster>(true)?.
+                GetComponentInParent<HTC.UnityPlugin.PoseTracker.PoseStablizer>();
+            if (!stabilizer) return;
+            
+            if (VRControllerInput.inHandTrackingMode)
+            {
+                // Hand tracking can flicker a lot and needs more stabilization.
+                stabilizer.positionThreshold = 1 / 256f;
+                stabilizer.rotationThreshold = 4;
+            }
+            else
             {
                 // The vanilla laser pointer stabilization is too aggressive and causes a laggy feel.
                 // Reduce the thresholds for a better balance between stability and responsiveness.

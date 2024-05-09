@@ -68,7 +68,7 @@ namespace BetterVR
                 transform.localScale = Vector3.one / 32;
             }
 
-            if (isGaugeHit)
+            if (isGaugeHit || (BetterVRPlugin.ILUTimer > 0 && !BetterVRPlugin.ILUCooldown))
             {
                 gaugeCamera.enabled = true;
                 smoothGaugeHit = Mathf.SmoothDamp(smoothGaugeHit, 1, ref gaugeAcceleration, 0.125f);
@@ -179,6 +179,11 @@ namespace BetterVR
 
         private static bool ShouldUsePulsingColor(bool isGaugeHit, float feelLevel)
         {
+            if (VRControllerInput.IsILUGesture())
+            {
+                return true;
+            }
+
             if (!isGaugeHit) return false;
             if (feelLevel > 0.74f && feelLevel < 0.75f) return true;
             return feelLevel > 0.97f;

@@ -31,6 +31,8 @@ namespace BetterVR
         public static ConfigEntry<Quaternion> RightGloveRotation { get; private set; }
         public static ConfigEntry<float> GloveScale { get; private set; }
 
+        public static ConfigEntry<bool> UseFingerTrackingGestures { get; private set; }
+
         public static float PlayerScale {
             get { return Mathf.Pow(2, PlayerLogScale.Value); }
             set { PlayerLogScale.Value = Mathf.Log(value, 2); }
@@ -150,6 +152,8 @@ namespace BetterVR
                 "VR General", "Hand Scale", 0.14f,
                  new ConfigDescription("Scale of the VR gloves",  new AcceptableValueRange<float>(0.01f, 2f)));
 
+            UseFingerTrackingGestures = Config.Bind<bool>(
+                "VR General", "Use hand tracking gestures", false, new ConfigDescription("Use advanced finger tracking gestures"));
         }
 
         internal static bool IsTwoHandedTurnEnabled()

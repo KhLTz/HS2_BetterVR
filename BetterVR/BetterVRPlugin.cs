@@ -144,7 +144,40 @@ namespace BetterVR
                     VRControllerCollider.UpdateDynamicBoneColliders();
                     break;
                 case 1:
+                    if (VRMenuHooks.ShouldReloadScene)
+                    {
+                        VRMenuHooks.ShouldReloadScene = false;
+                        Scene.LoadReserve(new Scene.Data
+                        {
+                            levelName = "VRHScene",
+                            fadeType = FadeCanvas.Fade.In
+                        }, true);
+                        return;
+
+                    } else
+                    {
+                        break;
+                    }
+
+
                     // InteractionCollider.shouldVisualizeColliders = !InteractionCollider.shouldVisualizeColliders;
+                    var hScene = Singleton<HSceneManager>.Instance?.Hscene;
+                    if (hScene == null) break;
+                    var ctrls = hScene.ctrlHitObjectFemales;
+                    if (ctrls == null || ctrls.Length == 0) break;
+                    var objs = (List<GameObject>)typeof(HitObjectCtrl).GetField("lstObject", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(ctrls[0]);
+                    if (objs == null) break;
+                    foreach (var obj in objs)
+                    {
+                        if (obj == null)
+                        {
+                            Logger.LogWarning("Clearing hit objects... ");
+                            objs.Clear();
+                            break;
+                        }
+                    }
+
+
                     VRControllerCollider.UpdateDynamicBoneColliders();
                     break;
                 case 2:

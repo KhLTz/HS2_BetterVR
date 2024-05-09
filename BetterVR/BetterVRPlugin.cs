@@ -3,6 +3,8 @@ using BepInEx.Logging;
 using Manager;
 using HTC.UnityPlugin.Vive;
 using HarmonyLib;
+using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 
 namespace BetterVR 
@@ -23,6 +25,9 @@ namespace BetterVR
 
         private static StripUpdater leftHandStripUpdater;
         private static StripUpdater rightsHandStripUpdater;
+
+        internal static float ILUTimer { get; private set; } = 0;
+        internal static bool ILUCooldown { get; private set; } = false;
 
         internal void Start() 
         {
@@ -73,6 +78,21 @@ namespace BetterVR
             // if (BetterVRPlugin.debugLog && Time.frameCount % 10 == 0) BetterVRPlugin.Logger.LogInfo($" SqueezeToTurn {SqueezeToTurn.Value} VRControllerInput.VROrigin {VRControllerInput.VROrigin}");        
 
             VRControllerInput.UpdateSqueezeMovement();
+
+            if (VRControllerInput.IsILUGesture(HandRole.LeftHand) || VRControllerInput.IsILUGesture(HandRole.RightHand))
+            {
+                ILUTimer += Time.deltaTime;
+                if (!ILUCooldown && ILUTimer > 3f)
+                {
+                    BetterVRPluginHelper.FinishH();
+                    ILUCooldown = true;
+                }
+            }
+            else
+            {
+                ILUTimer = 0;
+                ILUCooldown = false;
+            }
         }
 
         internal static AIChara.ChaControl GetPlayer()
@@ -82,9 +102,15 @@ namespace BetterVR
 
         private static void CheckRadialMenu(RadialMenu radialMenu, HandRole handRole)
         {
-            bool menuShouldBeActive =
-                ViveInput.GetPressDownEx<HandRole>(handRole, ControllerButton.AKey) ||
-                (radialMenu.isActiveAndEnabled && ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.AKey));
+            bool shouldActivateMenu =
+                VRControllerInput.IsChillGesture(handRole) ||
+                ViveInput.GetPressDownEx<HandRole>(handRole, ControllerButton.AKey);
+
+            bool shouldKeepMenuActivated =
+                (VRControllerInput.inHandTrackingMode && ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.Grip)) ||
+                ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.AKey);
+
+            bool menuShouldBeActive = shouldActivateMenu || (shouldKeepMenuActivated && radialMenu.isActiveAndEnabled);
             if (menuShouldBeActive && !radialMenu.gameObject.activeSelf)
             {
                 radialMenu.gameObject.SetActive(true);

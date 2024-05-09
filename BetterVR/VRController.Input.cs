@@ -13,17 +13,24 @@ namespace BetterVR
         internal static ViveRoleProperty roleR { get; private set; } = ViveRoleProperty.New(HandRole.RightHand);
         internal static ViveRoleProperty roleL { get; private set; } = ViveRoleProperty.New(HandRole.LeftHand);
         internal static ControllerManager controllerManager;
+        internal static bool inHandTrackingMode { get; private set; }
         internal static bool isDraggingScale { get { return twoHandedWorldGrab != null && twoHandedWorldGrab.canScale; } }
         private static TwoHandedWorldGrab _twoHandedWorldGrab;
-        private static TwoHandedWorldGrab twoHandedWorldGrab {
-            get {
-                if (_twoHandedWorldGrab == null || _twoHandedWorldGrab.gameObject == null) {
+        private static TwoHandedWorldGrab twoHandedWorldGrab
+        {
+            get
+            {
+                if (_twoHandedWorldGrab == null || _twoHandedWorldGrab.gameObject == null)
+                {
                     _twoHandedWorldGrab = new GameObject("WorldGrabScale").AddComponent<TwoHandedWorldGrab>();
                     _twoHandedWorldGrab.enabled = false;
                 }
                 return _twoHandedWorldGrab;
             }
         }
+        private static bool leftHandTriggerAndGrip;
+        private static bool rightHandTriggerAndGrip;
+
         internal static Vector3 handMidpointLocal
         {
             get { return Vector3.Lerp(VivePose.GetPose(roleL).pos, VivePose.GetPose(roleR).pos, 0.5f); }
@@ -49,21 +56,27 @@ namespace BetterVR
         /// </summary>
         internal static void UpdateSqueezeMovement()
         {
+            UpdateHandTrackingMode();
+            VRControllerPointer.UpdateStabilizer(BetterVRPluginHelper.GetRightHand());
+
             Transform vrOrigin = BetterVRPluginHelper.VROrigin?.transform;
             if (!vrOrigin) return;
 
-            bool leftHandTriggerAndGrip =
+            var wasHoldingLeftHandTriggerAndGrip = leftHandTriggerAndGrip;
+            var wasHoldingRightHandTriggerAndGrip = rightHandTriggerAndGrip;
+
+            leftHandTriggerAndGrip =
                 ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.Trigger) &&
                 ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.Grip);
-            bool rightHandTriggerAndGrip =
+            rightHandTriggerAndGrip =
                 ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.Trigger) &&
                 ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.Grip);
             bool bothGrips =
                 ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.Grip) &&
                 ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.Grip);
-            
+
             bool twoHandedTurn = BetterVRPlugin.IsTwoHandedTurnEnabled() && bothGrips;
-            bool shouldScale = leftHandTriggerAndGrip && rightHandTriggerAndGrip;
+            bool shouldScale = leftHandTriggerAndGrip && rightHandTriggerAndGrip && !inHandTrackingMode;
 
             twoHandedWorldGrab.enabled = shouldScale || twoHandedTurn;
             twoHandedWorldGrab.canScale = shouldScale;
@@ -73,14 +86,36 @@ namespace BetterVR
 
             if (BetterVRPluginHelper.leftControllerCenter)
             {
-                BetterVRPluginHelper.leftControllerCenter.GetOrAddComponent<OneHandedWorldGrab>().enabled =
-                    leftHandTriggerAndGrip && !rightHandTriggerAndGrip && allowOneHandedWorldGrab;
+                var leftHandWorldGrab = BetterVRPluginHelper.leftControllerCenter.GetOrAddComponent<OneHandedWorldGrab>();
+                if (!leftHandTriggerAndGrip || rightHandTriggerAndGrip || !allowOneHandedWorldGrab)
+                {
+                    leftHandWorldGrab.enabled = false;
+                }
+                else if (leftHandWorldGrab.enabled == false)
+                {
+                    if (!inHandTrackingMode ||
+                        (!wasHoldingLeftHandTriggerAndGrip && IsCloseToWaist(BetterVRPluginHelper.leftControllerCenter.position)))
+                    {
+                        leftHandWorldGrab.enabled = true;
+                    }
+                }
             }
 
             if (BetterVRPluginHelper.rightControllerCenter)
             {
-                BetterVRPluginHelper.rightControllerCenter.GetOrAddComponent<OneHandedWorldGrab>().enabled =
-                    rightHandTriggerAndGrip && !leftHandTriggerAndGrip && allowOneHandedWorldGrab;
+                var rightHandWorldGrab = BetterVRPluginHelper.rightControllerCenter.GetOrAddComponent<OneHandedWorldGrab>();
+                if (!rightHandTriggerAndGrip || leftHandTriggerAndGrip || !allowOneHandedWorldGrab)
+                {
+                    rightHandWorldGrab.enabled = false;
+                }
+                else if (rightHandWorldGrab.enabled == false)
+                {
+                    if (!inHandTrackingMode ||
+                        (!wasHoldingRightHandTriggerAndGrip && IsCloseToWaist(BetterVRPluginHelper.rightControllerCenter.position)))
+                    {
+                        rightHandWorldGrab.enabled = true;
+                    }
+                }
             }
 
             if (!isDraggingScale && bothGrips &&
@@ -109,6 +144,134 @@ namespace BetterVR
             var vrOrigin = BetterVRPluginHelper.VROrigin?.transform;
             if (desiredWorldPosition == null || vrOrigin == null) return;
             vrOrigin.Translate((Vector3)desiredWorldPosition - vrOrigin.TransformPoint(handMidpointLocal), Space.World);
+        }
+
+        internal static bool IsILUGesture()
+        {
+            return IsILUGesture(HandRole.LeftHand) || IsILUGesture(HandRole.RightHand);
+        }
+
+        internal static bool IsILUGesture(HandRole handRole)
+        {
+            return inHandTrackingMode &&
+                !ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.AKeyTouch) &&
+                !ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.BkeyTouch) &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.IndexCurl) < 0.3f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.MiddleCurl) > 0.8f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.RingCurl) > 0.8f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.PinkyCurl) < 0.3f;
+        }
+
+        internal static bool IsChillGesture(HandRole handRole)
+        {
+            return inHandTrackingMode &&
+                !ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.AKeyTouch) &&
+                !ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.BkeyTouch) &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.IndexCurl) > 0.8f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.MiddleCurl) > 0.8f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.RingCurl) > 0.8f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.PinkyCurl) < 0.3f;
+        }
+
+        internal static bool IsPeaceGesture(HandRole handRole)
+        {
+            return inHandTrackingMode &&
+                ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.AKeyTouch) &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.IndexCurl) < 0.3f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.MiddleCurl) < 0.3f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.RingCurl) > 0.8f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.PinkyCurl) > 0.8f;
+        }
+
+        internal static bool TightGrip(HandRole handRole)
+        {
+            return inHandTrackingMode &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.MiddleCurl) > 0.8f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.RingCurl) > 0.8f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.PinkyCurl) > 0.8f;
+        }
+
+        internal static bool CanOpenMenuByGesture()
+        {
+            if (!IsPeaceGesture(HandRole.LeftHand)) return false;
+
+            if (!ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.AKeyTouch) ||
+                !TightGrip(HandRole.RightHand))
+            {
+                return false;
+            }
+
+            return ViveInput.GetPressUpEx<HandRole>(HandRole.RightHand, ControllerButton.Trigger);
+        }
+
+        internal static bool CanCloseMenuByGesture()
+        {
+            if (!IsPeaceGesture(HandRole.RightHand)) return false;
+
+            if (!ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.AKeyTouch) ||
+                !TightGrip(HandRole.LeftHand))
+            {
+                return false;
+            }
+
+            return ViveInput.GetPressUpEx<HandRole>(HandRole.LeftHand, ControllerButton.Trigger);
+        }
+
+        private static void UpdateHandTrackingMode()
+        {
+            if (!BetterVRPlugin.UseFingerTrackingGestures.Value)
+            {
+                inHandTrackingMode = false;
+                return;
+            }
+
+            const float MIN_CURL_DIFF = 0.5f;
+
+            if (inHandTrackingMode)
+            {
+                if (ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.AKey) ||
+                    ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.BKey) ||
+                    ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.AKey) ||
+                    ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.AKey))
+                {
+                    inHandTrackingMode = false;
+                }
+            }
+            else
+            {
+                if (GetCurlDiff(HandRole.LeftHand) > MIN_CURL_DIFF || GetCurlDiff(HandRole.RightHand) > MIN_CURL_DIFF)
+                {
+                    inHandTrackingMode = true;
+                }
+            }
+
+            if (inHandTrackingMode)
+            {
+                var buttonChecks = GameObject.FindObjectsOfType<Illusion.Component.UI.MouseButtonCheck>();
+                foreach (var check in buttonChecks)
+                {
+                    check.isOnDrag = check.isOnBeginDrag = false;
+                }
+            }
+        }
+
+        private static float GetCurlDiff(HandRole handRole)
+        {
+            var middleCurl = ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.MiddleCurl);
+            var pinkyCurl = ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.PinkyCurl);
+            return Mathf.Abs(middleCurl - pinkyCurl);
+        }
+
+        private static bool IsCloseToWaist(Vector3 position)
+        {
+            var range = BetterVRPlugin.PlayerScale * 0.25f;
+            Collider[] colliders = Physics.OverlapSphere(position, range, 1 << StripUpdater.H_CAMERA_LAYER);
+            foreach (Collider collider in colliders)
+            {
+                InteractionCollider interactionCollider = collider.GetComponent<InteractionCollider>();
+                if (interactionCollider != null && interactionCollider.IsCharacterVisible() && interactionCollider.name.Contains("osi")) return true;
+            }
+            return false;
         }
 
         public class TwoHandedWorldGrab : MonoBehaviour
@@ -387,8 +550,17 @@ namespace BetterVR
                     handRole = HandRole.RightHand;
                     controllerCenter = BetterVRPluginHelper.rightControllerCenter;
                 }
+                else if (CanOpenMenuByGesture())
+                {
+                    handRole = HandRole.LeftHand;
+                    controllerCenter = BetterVRPluginHelper.leftControllerCenter;
+                }
                 else
                 {
+                    if (CanCloseMenuByGesture())
+                    {
+                        menu.Enable(false);
+                    }
                     handRole = HandRole.Invalid;
                 }
 
@@ -404,7 +576,7 @@ namespace BetterVR
                     // Scale to the right size.
                     if (originalScale == null) originalScale = menu.transform.localScale;
                     Vector3 newScale = controllerCenter.lossyScale / 4096f;
-                    menu.transform.localScale = 
+                    menu.transform.localScale =
                         menu.transform.parent == null ? newScale : newScale / menu.transform.parent.lossyScale.x;
 
                     SetLaserWidths(BetterVRPlugin.PlayerScale / 2f);
@@ -416,7 +588,7 @@ namespace BetterVR
                     controllerManager?.UpdateActivity();
                 }
 
-                if (ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.Menu))
+                if (ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.Menu) || CanOpenMenuByGesture())
                 {
                     // Move the menu with the hand.
                     menu.transform.SetPositionAndRotation(
@@ -427,8 +599,8 @@ namespace BetterVR
 
             private void SetLaserWidths(float width)
             {
-                SetLaserWidth(BetterVRPluginHelper.GetLeftHand(), (float) width);
-                SetLaserWidth(BetterVRPluginHelper.GetRightHand(), (float) width);
+                SetLaserWidth(BetterVRPluginHelper.GetLeftHand(), (float)width);
+                SetLaserWidth(BetterVRPluginHelper.GetRightHand(), (float)width);
             }
 
             private void SetLaserWidth(GameObject hand, float width)

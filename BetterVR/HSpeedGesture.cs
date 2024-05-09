@@ -266,7 +266,7 @@ namespace BetterVR
             // Reduce feel increase rate for realism.
             hCtrl.speedGuageRate = hCtrl.feel_f < 0.75f ? CUSTOM_SPEED_GAUGE_RATE : ORIGINAL_SPEED_GAUGE_RATE;
 
-            if (hCtrl.isGaugeHit)
+            if (hCtrl.isGaugeHit || (BetterVRPlugin.ILUTimer > 0 && !BetterVRPlugin.ILUCooldown))
             {
                 if (gaugeHitIndicator == null)
                 {
@@ -303,9 +303,8 @@ namespace BetterVR
         {
             if (hCtrl.loopType == -1)
             {
-                if (IsAibu() && smoothTargetSpeed > LOOP_0_ACTIVATION_THRESHOLD)
+                if (AllowStartingHWithGesture())
                 {
-                    // Allow starting action using hand movement in Aibu mode.
                     outputY = 1;
                 }
                 else
@@ -352,6 +351,12 @@ namespace BetterVR
         internal void RemoveSourceGesture(HSpeedGesture gesture)
         {
             sourceGestures.Remove(gesture);
+        }
+
+        private bool AllowStartingHWithGesture()
+        {
+            if (smoothTargetSpeed < LOOP_0_ACTIVATION_THRESHOLD) return false;
+            return IsAibu() || VRControllerInput.IsILUGesture();
         }
 
         private void UpdateSmoothTargetSpeed(HSceneFlagCtrl hCtrl, float deltaTime)

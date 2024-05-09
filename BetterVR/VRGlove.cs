@@ -212,18 +212,41 @@ namespace BetterVR
         {
             if (thumb && thumb.childCount > 0)
             {
-                if (ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.AKeyTouch) ||
-                    ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.BkeyTouch) ||
-                    ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.PadTouch) ||
-                    ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.MenuTouch))
+                if (VRControllerInput.inHandTrackingMode)
                 {
-                    thumb.localRotation = Quaternion.Euler(0, 10 * rotationFactor, 5 * rotationFactor);
-                    thumb.GetChild(0).localRotation = Quaternion.Euler(0, 5 * rotationFactor, 30 * rotationFactor);
+                    if (ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.AKeyTouch))
+                    {
+                        thumb.localRotation = Quaternion.Euler(0, -20 * rotationFactor, 15 * rotationFactor);
+                        thumb.GetChild(0).localRotation = Quaternion.Euler(0, -10* rotationFactor, 30 * rotationFactor);
+                        thumb.GetChild(0).GetChild(0).localRotation = Quaternion.Euler(0, -45 * rotationFactor, 0 * rotationFactor);
+                    }
+                    else if (ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.BkeyTouch)) {
+                        thumb.localRotation = Quaternion.Euler(0, 0 * rotationFactor, 5 * rotationFactor);
+                        thumb.GetChild(0).localRotation = Quaternion.Euler(0, 0 * rotationFactor, 30 * rotationFactor);
+                        thumb.GetChild(0).GetChild(0).localRotation = Quaternion.Euler(0, -10 * rotationFactor, 0 * rotationFactor);
+                    }
+                    else
+                    {
+                        thumb.localRotation = Quaternion.Euler(0, 10 * rotationFactor, 5 * rotationFactor);
+                        thumb.GetChild(0).localRotation = Quaternion.Euler(0, 5 * rotationFactor, 30 * rotationFactor);
+                        thumb.GetChild(0).GetChild(0).localRotation = Quaternion.Euler(0, 0 * rotationFactor, 0 * rotationFactor);
+                    }
                 }
                 else
                 {
-                    thumb.localRotation = Quaternion.Euler(0, 15 * rotationFactor, 20 * rotationFactor);
-                    thumb.GetChild(0).localRotation = Quaternion.Euler(0, 10 * rotationFactor, 35 * rotationFactor);
+                    if (ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.AKeyTouch) ||
+                    ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.BkeyTouch) ||
+                    ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.PadTouch) ||
+                    ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.MenuTouch))
+                    {
+                         thumb.localRotation = Quaternion.Euler(0, 10 * rotationFactor, 5 * rotationFactor);
+                         thumb.GetChild(0).localRotation = Quaternion.Euler(0, 5 * rotationFactor, 30 * rotationFactor);
+                    }
+                    else
+                    {
+                        thumb.localRotation = Quaternion.Euler(0, 15 * rotationFactor, 20 * rotationFactor);
+                        thumb.GetChild(0).localRotation = Quaternion.Euler(0, 10 * rotationFactor, 35 * rotationFactor);
+                    }
                 }
             }
 
@@ -232,18 +255,35 @@ namespace BetterVR
             float ringCurl = ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.RingCurl);
             float pinkyCurl = ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.PinkyCurl);
 
-            if (indexCurl != 0 || middleCurl != 0 || ringCurl != 0 || pinkyCurl != 0)
+            if (VRControllerInput.inHandTrackingMode && indexCurl != 0)
             {
-                UpdateAngle(index, indexCurl * 35);
-                UpdateAngle(middle, middleCurl * 60);
-                UpdateAngle(ring, ringCurl * 60);
-                UpdateAngle(pinky, pinkyCurl * 60);
-                return;
+                UpdateAngle(index, indexCurl * 65);
+            }
+            else
+            {
+                float indexAngle = ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.Trigger);
+
+                if (ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.TriggerTouch))
+                {
+                    indexAngle = indexAngle * 5 + 30;
+                }
+                else
+                {
+                    indexAngle = indexAngle * indexAngle * 45 + 10;
+                }
+
+                UpdateAngle(index, indexAngle);
             }
 
-            float indexAngle = 10;
-            if (ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.TriggerTouch)) indexAngle = 30;
-            indexAngle += ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.Trigger) * 5;
+            if (VRControllerInput.inHandTrackingMode || middleCurl != 0 || ringCurl != 0 || pinkyCurl != 0)
+            {
+                float maxAngle = VRControllerInput.inHandTrackingMode ? 75 : 60;
+
+                UpdateAngle(middle, middleCurl * maxAngle);
+                UpdateAngle(ring, ringCurl * maxAngle);
+                UpdateAngle(pinky, pinkyCurl * maxAngle);
+                return;
+            }
 
             float gripAngle = 10;
             if (ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.TriggerTouch) ||
@@ -251,7 +291,6 @@ namespace BetterVR
                 ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.CapSenseGripTouch)) gripAngle = 70;
             gripAngle += ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.CapSenseGrip) * 3;
 
-            UpdateAngle(index, indexAngle);
             UpdateAngle(middle, gripAngle);
             UpdateAngle(ring, gripAngle * 1.15f);
             UpdateAngle(pinky, gripAngle * 1.4f);

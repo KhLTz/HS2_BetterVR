@@ -51,18 +51,23 @@ namespace BetterVR
 
             BetterVRPlugin.Logger.LogInfo("Updated laser pointer rotation: " + oldAngles + " -> " + raycaster.transform.localRotation.eulerAngles);
 
-            UpdateStabilizer(controller);
+            UpdateStabilizer(controller, false);
         }
 
-        internal static void UpdateStabilizer(GameObject controller)
+        internal static void UpdateStabilizer(GameObject controller, bool freeze)
         {
             var stabilizer = 
                 controller?.
                 GetComponentInChildren<HTC.UnityPlugin.Pointer3D.Pointer3DRaycaster>(true)?.
                 GetComponentInParent<HTC.UnityPlugin.PoseTracker.PoseStablizer>();
             if (!stabilizer) return;
-            
-            if (VRControllerInput.inHandTrackingMode)
+
+            if (freeze)
+            {
+                stabilizer.positionThreshold = 1 / 32f;
+                stabilizer.rotationThreshold = 30;
+            }
+            else if (VRControllerInput.inHandTrackingMode)
             {
                 // Hand tracking can flicker a lot and needs more stabilization.
                 stabilizer.positionThreshold = 1 / 256f;

@@ -12,7 +12,12 @@ namespace BetterVR
         internal static ViveRoleProperty roleH { get; private set; } = ViveRoleProperty.New(DeviceRole.Hmd);
         internal static ViveRoleProperty roleR { get; private set; } = ViveRoleProperty.New(HandRole.RightHand);
         internal static ViveRoleProperty roleL { get; private set; } = ViveRoleProperty.New(HandRole.LeftHand);
-        internal static ControllerManager controllerManager;
+        private static ControllerManager _controllerManager;
+        internal static ControllerManager controllerManager {
+            get { return _controllerManager ?? (_controllerManager = GameObject.FindObjectOfType<ControllerManager>()); }
+            set { _controllerManager = value; }
+        }
+
         internal static bool inHandTrackingMode { get; private set; }
         internal static bool isDraggingScale { get { return twoHandedWorldGrab != null && twoHandedWorldGrab.canScale; } }
         private static TwoHandedWorldGrab _twoHandedWorldGrab;
@@ -56,9 +61,15 @@ namespace BetterVR
         /// </summary>
         internal static void UpdateSqueezeMovement()
         {
+            bool wasInHandTrackingMode = inHandTrackingMode;
             UpdateHandTrackingMode();
-            VRControllerPointer.UpdateStabilizer(BetterVRPluginHelper.GetRightHand());
-
+            if (inHandTrackingMode != wasInHandTrackingMode)
+            {
+                UpdateCursorAttachPosition();
+            }
+            VRControllerPointer.UpdateStabilizer(BetterVRPluginHelper.GetLeftHand(), freeze: TightGrip(HandRole.RightHand));
+            VRControllerPointer.UpdateStabilizer(BetterVRPluginHelper.GetRightHand(), freeze: TightGrip(HandRole.LeftHand));
+   
             Transform vrOrigin = BetterVRPluginHelper.VROrigin?.transform;
             if (!vrOrigin) return;
 
@@ -175,8 +186,11 @@ namespace BetterVR
 
         internal static bool IsPeaceGesture(HandRole handRole)
         {
-            return inHandTrackingMode &&
-                ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.AKeyTouch) &&
+            if (!inHandTrackingMode) return false;
+            if (!ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.AKeyTouch) &&
+                !ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.BkeyTouch)) return false;
+
+            return
                 ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.IndexCurl) < 0.3f &&
                 ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.MiddleCurl) < 0.3f &&
                 ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.RingCurl) > 0.8f &&
@@ -195,26 +209,26 @@ namespace BetterVR
         {
             if (!IsPeaceGesture(HandRole.LeftHand)) return false;
 
-            if (!ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.AKeyTouch) ||
-                !TightGrip(HandRole.RightHand))
+            if (!ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.AKeyTouch) &&
+                !ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.BkeyTouch))
             {
                 return false;
             }
 
-            return ViveInput.GetPressUpEx<HandRole>(HandRole.RightHand, ControllerButton.Trigger);
+            return TightGrip(HandRole.RightHand) && ViveInput.GetPressUpEx<HandRole>(HandRole.RightHand, ControllerButton.Trigger);
         }
 
         internal static bool CanCloseMenuByGesture()
         {
             if (!IsPeaceGesture(HandRole.RightHand)) return false;
 
-            if (!ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.AKeyTouch) ||
-                !TightGrip(HandRole.LeftHand))
+            if (!ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.AKeyTouch) &&
+                !ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.BkeyTouch))
             {
                 return false;
             }
 
-            return ViveInput.GetPressUpEx<HandRole>(HandRole.LeftHand, ControllerButton.Trigger);
+            return TightGrip(HandRole.LeftHand) && ViveInput.GetPressUpEx<HandRole>(HandRole.LeftHand, ControllerButton.Trigger);
         }
 
         private static void UpdateHandTrackingMode()
@@ -251,6 +265,30 @@ namespace BetterVR
                 foreach (var check in buttonChecks)
                 {
                     check.isOnDrag = check.isOnBeginDrag = false;
+                }
+            }
+        }
+
+        private static void UpdateCursorAttachPosition()
+        {
+            if (BetterVRPluginHelper.leftCursorAttach != null)
+            {
+                if (inHandTrackingMode && BetterVRPluginHelper.leftGlove != null)
+                {
+                    BetterVRPluginHelper.leftCursorAttach.position = BetterVRPluginHelper.leftGlove.transform.TransformPoint(new Vector3(-3f, 0.25f, 0.75f));
+                }
+                else {
+                    BetterVRPluginHelper.leftCursorAttach.localPosition = new Vector3(0, 0.0625f, 0.125f);
+                }
+            }
+
+            if (BetterVRPluginHelper.rightCursorAttach != null)
+            {
+                if (inHandTrackingMode && BetterVRPluginHelper.rightGlove != null) {
+                    BetterVRPluginHelper.rightCursorAttach.position = BetterVRPluginHelper.rightGlove.transform.TransformPoint(new Vector3(3f, 0.25f, 0.75f));
+                }
+                else {
+                    BetterVRPluginHelper.rightCursorAttach.localPosition = new Vector3(0, 0.0625f, 0.125f);
                 }
             }
         }
@@ -505,7 +543,23 @@ namespace BetterVR
 
                 var camera = BetterVRPluginHelper.VRCamera;
 
-                if (menu == null || camera == null) return;
+                if (menu == null || camera == null)
+                {
+                    // Allow toggling right hand laser in select scene.
+                    if (CanOpenMenuByGesture())
+                    {
+                        controllerManager?.SetRightLaserPointerActive(true);
+                        controllerManager?.UpdateActivity();
+                    }
+                    else if (CanCloseMenuByGesture())
+                    {
+                        controllerManager?.SetRightLaserPointerActive(false);
+                        controllerManager?.UpdateActivity();
+                    }
+                    // The controller manager might become stale later, clear the cache.
+                    controllerManager = null;
+                    return;
+                }
 
                 if (ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.Menu))
                 {
@@ -581,7 +635,6 @@ namespace BetterVR
 
                     SetLaserWidths(BetterVRPlugin.PlayerScale / 2f);
 
-                    if (controllerManager == null) controllerManager = GameObject.FindObjectOfType<ControllerManager>();
                     // Hide the laser on the laser hand and show the laser on the other hand.
                     controllerManager?.SetLeftLaserPointerActive(handRole != HandRole.LeftHand);
                     controllerManager?.SetRightLaserPointerActive(handRole != HandRole.RightHand);

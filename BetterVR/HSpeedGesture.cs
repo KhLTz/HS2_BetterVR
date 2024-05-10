@@ -278,7 +278,7 @@ namespace BetterVR
             UpdateOutput(hCtrl);
 
             if (IsAibu() && !hCtrl.isGaugeHit && hCtrl.loopType >= 0 && hCtrl.loopType <= 2 &&
-                smoothTargetSpeed < LOOP_0_DEACTIVATION_THRESHOLD)
+                smoothTargetSpeed < LOOP_0_DEACTIVATION_THRESHOLD && !VRControllerInput.IsILUGesture())
             {
                 // Allow stopping action with hand motion in Aibu mode.
                 StopMotion(hCtrl);

@@ -103,7 +103,7 @@ namespace BetterVR
                 if (CreateTransformIfNotPresent(ref _leftCursorAttach, parent: leftControllerCenter))
                 {
                     _leftCursorAttach.name = "LeftCursorAttach";
-                    _leftCursorAttach.localPosition = Vector3.forward * 0.1f;
+                    _leftCursorAttach.localPosition = new Vector3(0, 0.0625f, 0.125f);
                 }
                 return _leftCursorAttach;
             }
@@ -115,7 +115,7 @@ namespace BetterVR
                 if (CreateTransformIfNotPresent(ref _rightCursorAttach, parent: rightControllerCenter))
                 {
                     _rightCursorAttach.name = "RightCursorAttach";
-                    _rightCursorAttach.localPosition = Vector3.forward * 0.1f;
+                    _rightCursorAttach.localPosition = new Vector3(0, 0.0625f, 0.125f);
                 }
                 return _rightCursorAttach;
             }

@@ -40,6 +40,18 @@ Forked from thojmr/HS2_BetterVR, this plugin for `Honey Select 2 VR` fixes a han
     - Haptic feedback (if enabled) indicates that this feature is in action
     - When the haptic feedback feels like a heart beat, it means the pleasurr gauge is hit
     - Also look for a heart icon that may show up which indicates pleasure gauge hit
+- Adds support for hand gestures supporting Index controllers and emulated Index controllers
+    - Enable finger tracking feature in settings
+    - Move middle finger and pinky independently from each other to enter hand gesture mode
+    - In hand tracking mode, two-handed world scaling is disabled
+    - In hand tracking mode, one-handed world grab can only work when grab character waist
+    - Hold Shaka sign to pull up radial menu
+    - Hold ILY sign while touching character to start H
+    - Hold ILY sign for 3 seconds to finish current H stage
+    - Hold peace sign with one hand and gesture come-over sign with other hand to pull up menu
+    - Gesture come-over sign with both hands to close menu
+    - Stretch index finger and pinky and pinch middle finger toward palm/thumb near clothes and start dragging to adjust clothing level
+    - Press A, B, X, or Y button to exit hand gesture mode
 - Adds option to skip title scene on game start and go straight to select scene.
 - Adds option to unlock all positions regardless of character state.
 - Adds option to tilt VR laser pointers up or down. 
@@ -47,7 +59,6 @@ Forked from thojmr/HS2_BetterVR, this plugin for `Honey Select 2 VR` fixes a han
 - Fixes the bug of vanilla game resets camera when changing animation even if the camera initialization option is toggled off.
 - Fixes the non-interactable silhouette palette in game settings.
 - Fixes the bug that all animations are frozen after opening mod config dialog and closing game settings dialog sometimes.
-
 
 ## How to install
 Almost all plugins are installed in the same way. If there are any extra steps needed they will be added to the plugin descriptions below.

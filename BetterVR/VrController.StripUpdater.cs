@@ -14,19 +14,19 @@ namespace BetterVR
         internal const int H_CAMERA_LAYER = 22;
         internal static readonly Color[] STRIP_INDICATOR_COLORS =
             new Color[] { Color.blue, Color.red, Color.cyan, Color.magenta, Color.yellow, Color.green, Color.white, Color.black };
-        
+
         private const float STRIP_START_RANGE = 0.5f;
         private const float STRIP_MIN_DRAG_RANGE = 0.75f;
         private Canvas clothIconCanvas;
         private List<GameObject> clothIcons = new List<GameObject>();
+        private List<GameObject> strippedClothIcons = new List<GameObject>();
         private bool finishedLoadingClothIcons = false;
         private ViveRoleProperty handRole;
         private Vector3 stripStartPos;
         private bool canClothe;
         private StripCollider grabbedStripCollider;
         private MeshRenderer stripIndicator;
-
-
+        private bool grabbing;
 
         internal StripUpdater(ViveRoleProperty handRole)
         {
@@ -40,16 +40,16 @@ namespace BetterVR
             Vector3 handPos =
                 BetterVRPluginHelper.VROrigin.transform.TransformPoint(VivePose.GetPose(handRole).pos);
 
-            if (!enable ||
-                ViveInput.GetPress(handRole, ControllerButton.Grip)) // Disable stripping during possible movements
+            if (!enable || (!VRControllerInput.inHandTrackingMode && ViveInput.GetPress(handRole, ControllerButton.Grip)))
             {
                 grabbedStripCollider = null;
                 canClothe = false;
                 stripIndicator?.gameObject.SetActive(false);
+                grabbing = false;
                 return;
             }
 
-            if (ViveInput.GetPressUp(handRole, ControllerButton.Trigger))
+            if (!VRControllerInput.inHandTrackingMode && ViveInput.GetPressUp(handRole, ControllerButton.Trigger))
             {
                 if (grabbedStripCollider != null && canClothe)
                 {
@@ -65,18 +65,44 @@ namespace BetterVR
                 canClothe = false;
                 grabbedStripCollider = null;
                 stripIndicator?.gameObject.SetActive(false);
+                grabbing = false;
                 return;
             }
-            
-            if (ViveInput.GetPress(handRole, ControllerButton.Trigger))
+
+            grabbing = VRControllerInput.inHandTrackingMode? 
+                (VRControllerInput.CanStripUsingGesture(handRole, wasGrabbing: grabbing)) : ViveInput.GetPress(handRole, ControllerButton.Trigger);
+            if (grabbing)
             {
                 if (canClothe)
                 {
                     grabbedStripCollider = FindClosestStripCollider(handPos, STRIP_START_RANGE * BetterVRPlugin.PlayerScale, 1, 2);
                     UpdateStripIndicator();
                 }
-                else if (grabbedStripCollider != null && Vector3.Distance(handPos, stripStartPos) > STRIP_MIN_DRAG_RANGE * BetterVRPlugin.PlayerScale)
+                else
                 {
+                    if (finishedLoadingClothIcons)
+                    {
+                        for (int i = 0; i < clothIcons.Count; i++)
+                        {
+                            if (clothIcons[i] == null || strippedClothIcons[i] == null)
+                            {
+                                finishedLoadingClothIcons = false;
+                                break;
+                            }
+                            if (clothIcons[i].activeSelf)
+                            {
+                                clothIcons[i].SetActive(false);
+                                strippedClothIcons[i].SetActive(true);
+                                break;
+                            }
+                        }
+                    }
+
+                    if (grabbedStripCollider == null || Vector3.Distance(handPos, stripStartPos) < STRIP_MIN_DRAG_RANGE * BetterVRPlugin.PlayerScale)
+                    {
+                        return;
+                    }
+
                     if (Vector3.Angle(handPos - stripStartPos, grabbedStripCollider.transform.position - stripStartPos) > 90)
                     {
                         if (grabbedStripCollider.StripMore() && BetterVRPlugin.HapticFeedbackIntensity.Value > 0)
@@ -96,7 +122,7 @@ namespace BetterVR
                 return;
             }
 
-            grabbedStripCollider = FindClosestStripCollider(handPos, STRIP_START_RANGE * BetterVRPlugin.PlayerScale, 0, 1);
+            grabbedStripCollider = FindClosestStripCollider(handPos, STRIP_START_RANGE * BetterVRPlugin.PlayerScale, 0, VRControllerInput.inHandTrackingMode ? (byte) 2 : (byte) 1);
             UpdateStripIndicator();
             stripStartPos = handPos;
             canClothe = (grabbedStripCollider == null);
@@ -116,6 +142,7 @@ namespace BetterVR
             }
 
             while (clothIcons.Count < 8) clothIcons.Add(null);
+            while (strippedClothIcons.Count < 8) strippedClothIcons.Add(null);
 
             if (!clothIconCanvas) clothIconCanvas = new GameObject("ClothIconCanvas").AddComponent<Canvas>();
             clothIconCanvas.transform.SetParent(stripIndicator.transform, false);
@@ -126,7 +153,7 @@ namespace BetterVR
             bool waitingForIcons = false;
             for (int i = 0; i < 8; i++)
             {
-                if (clothIcons[i] != null) continue;
+                if (clothIcons[i] != null && strippedClothIcons[i] != null) continue;
 
                 var allClothButtons = hSceneSprite.objCloth.objs;
                 if (allClothButtons == null || allClothButtons.Count <= i)
@@ -135,31 +162,38 @@ namespace BetterVR
                     continue;
                 }
                 var buttons = allClothButtons[i].buttons;
-                var buttonIndex = (i == 3 || i == 5) ? 1 : 0;
-                if (buttons.Length <= buttonIndex)
+                if (buttons.Length < 2)
                 {
                     waitingForIcons = true;
                     continue;
                 }
 
-                GameObject clothIcon = GameObject.Instantiate(buttons[buttonIndex].gameObject);
+                GameObject clothIcon = GameObject.Instantiate(buttons[0].gameObject);
+                GameObject strippedClothIcon = GameObject.Instantiate(buttons[1].gameObject);
                 Object.Destroy(clothIcon.GetComponent<Button>());
                 Object.Destroy(clothIcon.GetComponent<SceneAssist.PointerDownAction>());
+                Object.Destroy(strippedClothIcon.GetComponent<Button>());
+                Object.Destroy(strippedClothIcon.GetComponent<SceneAssist.PointerDownAction>());
 
-                clothIcon.transform.SetParent(clothIconCanvas.transform, false);
-                clothIcon.transform.localPosition = Vector3.zero;
-                clothIcon.transform.localRotation = Quaternion.identity;
-                clothIcon.transform.localScale = Vector3.one;
-
-                var rectTransform = clothIcon.GetComponent<RectTransform>();
-                rectTransform.anchorMin = rectTransform.anchorMax = Vector2.one * 0.5f;
-                rectTransform.offsetMin = Vector2.one * -0.5f;
-                rectTransform.offsetMax = Vector3.one * 0.5f;
+                PositionClothIcon(clothIcon.GetComponent<RectTransform>(), clothIconCanvas);
+                PositionClothIcon(strippedClothIcon.GetComponent<RectTransform>(), clothIconCanvas);
                 clothIcons[i] = clothIcon;
+                strippedClothIcons[i] = strippedClothIcon;
             }
 
             finishedLoadingClothIcons = !waitingForIcons;
             if (finishedLoadingClothIcons) BetterVRPlugin.Logger.LogInfo("Loaded cloth icons");
+        }
+
+        private void PositionClothIcon(RectTransform clothIcon, Canvas parent)
+        {
+            clothIcon.transform.SetParent(parent.transform, false);
+            clothIcon.transform.localPosition = Vector3.zero;
+            clothIcon.transform.localRotation = Quaternion.identity;
+            clothIcon.transform.localScale = Vector3.one;
+            clothIcon.anchorMin = clothIcon.anchorMax = Vector2.one * 0.5f;
+            clothIcon.offsetMin = Vector2.one * -0.5f;
+            clothIcon.offsetMax = Vector3.one * 0.5f;
         }
 
         private void UpdateStripIndicator()
@@ -190,23 +224,24 @@ namespace BetterVR
 
             stripIndicator.gameObject.SetActive(true);
             stripIndicator.material.color = STRIP_INDICATOR_COLORS[grabbedStripCollider.clothType];
- 
-            if (clothIcons == null) finishedLoadingClothIcons = false;
+
+            if (clothIcons == null || strippedClothIcons == null) finishedLoadingClothIcons = false;
             LoadClothIconsIfNeeded();
 
             if (!finishedLoadingClothIcons) return;
             for (int i = 0; i < clothIcons.Count; i++)
             {
-                if (clothIcons[i] == null)
+                if (clothIcons[i] == null || strippedClothIcons[i] == null)
                 {
                     finishedLoadingClothIcons = false;
                     return;
                 }
                 clothIcons[i].SetActive(i == grabbedStripCollider.clothType);
+                strippedClothIcons[i].SetActive(false);
             }
-            // if (BetterVRPluginHelper.VRCamera && BetterVRPluginHelper.VRCamera) {
-            //    clothIconCanvas.transform.LookAt(BetterVRPluginHelper.VRCamera.transform, BetterVRPluginHelper.VROrigin.transform.up);
-            // }
+            if (BetterVRPluginHelper.VRCamera && BetterVRPluginHelper.VRCamera) {
+                clothIconCanvas.transform.LookAt(BetterVRPluginHelper.VRCamera.transform, BetterVRPluginHelper.VROrigin.transform.up);
+            }
         }
 
         private static StripCollider FindClosestStripCollider(Vector3 position, float range, byte minStripLevel = 0, byte maxStripLevel = 2)

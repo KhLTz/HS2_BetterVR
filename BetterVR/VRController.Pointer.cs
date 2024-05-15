@@ -5,7 +5,6 @@ namespace BetterVR
 {    
     public static class VRControllerPointer
     {
-
         /// <summary>
         /// Sets the angle of the laser pointer after some time to let the game objects settle
         /// </summary>
@@ -70,8 +69,8 @@ namespace BetterVR
             else if (VRControllerInput.inHandTrackingMode)
             {
                 // Hand tracking can flicker a lot and needs more stabilization.
-                stabilizer.positionThreshold = 1 / 256f;
-                stabilizer.rotationThreshold = 4;
+                stabilizer.positionThreshold = 0;
+                stabilizer.rotationThreshold = 2;
             }
             else
             {

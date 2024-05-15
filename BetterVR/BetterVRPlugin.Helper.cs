@@ -367,6 +367,14 @@ namespace BetterVR
             UpdateControllerVisibilty(FindControllerRenderModel(GetRightHand(), out var rCenter));
         }
 
+        internal static string GetNameAndComponents(GameObject go)
+        {
+            var result = go.name + ":";
+            var components = go.GetComponents<Component>();
+            foreach (var c in components) result += c.GetType() + ";";
+            return result;
+        }
+
         private static bool CreateTransformIfNotPresent(ref Transform transform, Transform parent)
         {
             if (parent == null)

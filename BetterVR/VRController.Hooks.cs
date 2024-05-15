@@ -3,6 +3,7 @@ using HarmonyLib;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace BetterVR
 {
@@ -89,7 +90,6 @@ namespace BetterVR
             return false;
         }
 
-
         // [HarmonyPostfix, HarmonyPatch(typeof(AIChara.ChaControl), nameof(AIChara.ChaControl.Initialize))]
         // internal static void ChaControlStartPatch(AIChara.ChaControl __instance, GameObject _objRoot)
         // {
@@ -142,6 +142,39 @@ namespace BetterVR
         internal static void HSceneFinishPatchS()
         {
             HSceneFinishPatch();
+        }
+
+        private const float MIN_TOUCH_INTERACTION_INTERVAL = 0.125f;
+        private static Selectable lastTouchedSelectable;
+
+        [HarmonyPostfix, HarmonyPatch(typeof(Selectable), nameof(Selectable.OnPointerEnter))]
+        internal static void SelectablePointerEnterPatch(Selectable __instance, PointerEventData eventData)
+        {
+            if (!VRControllerInput.inHandTrackingMode) return;
+            if (!(eventData is VivePointerEventData)) return;
+            var handRole = ((VivePointerEventData)eventData).viveRole == VRControllerInput.roleL ? HandRole.LeftHand : HandRole.RightHand;
+
+            lastTouchedSelectable = __instance;
+            var cooldown = BetterVRPlugin.touchInteractionCooldown;
+            BetterVRPlugin.touchInteractionCooldown = MIN_TOUCH_INTERACTION_INTERVAL;
+            if (cooldown > 0 || !VRControllerInput.MenuAutoGrab.CanClickByTouch(handRole)) return;
+
+            var clickables = __instance.GetComponentsInChildren<IPointerClickHandler>();
+            // Enable touch-clicking in hand tracking mode
+            foreach (var clickable in clickables) clickable.OnPointerClick(eventData);
+        }
+   
+        [HarmonyPrefix, HarmonyPatch(typeof(VivePointerEventData), nameof(VivePointerEventData.GetPress))]
+        internal static bool VivePointerEventDataPressPatch(VivePointerEventData __instance, ref bool __result)
+        {
+            var role = __instance.viveRole == VRControllerInput.roleL ? HandRole.LeftHand : HandRole.RightHand;
+            if (!VRControllerInput.MenuAutoGrab.InTouchMode(role)) return true;
+  
+            if (!__instance.pointerCurrentRaycast.isValid) return true;
+
+            // Enable touch-panning in hand tracking mode 
+            __result = true;
+            return false;
         }
 
         [HarmonyPrefix, HarmonyPatch(typeof(Illusion.Component.UI.ColorPicker.Info), "SetImagePosition")]

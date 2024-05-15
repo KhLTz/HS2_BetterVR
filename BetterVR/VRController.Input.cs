@@ -79,10 +79,11 @@ namespace BetterVR
             if (inHandTrackingMode != wasInHandTrackingMode)
             {
                 UpdateCursorAttachPosition();
+                RestoreRaycasters();
             }
             VRControllerPointer.UpdateStabilizer(BetterVRPluginHelper.GetLeftHand(), freeze: TightGrip(HandRole.RightHand));
             VRControllerPointer.UpdateStabilizer(BetterVRPluginHelper.GetRightHand(), freeze: TightGrip(HandRole.LeftHand));
-   
+
             Transform vrOrigin = BetterVRPluginHelper.VROrigin?.transform;
             if (!vrOrigin) return;
 
@@ -100,7 +101,8 @@ namespace BetterVR
                 ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.Grip);
 
             bool twoHandedTurn = BetterVRPlugin.IsTwoHandedTurnEnabled() && bothGrips;
-            bool shouldScale = leftHandTriggerAndGrip && rightHandTriggerAndGrip && !inHandTrackingMode;
+            bool shouldScale = inHandTrackingMode ?
+                CanScaleByGesture() : (leftHandTriggerAndGrip && rightHandTriggerAndGrip);
 
             twoHandedWorldGrab.enabled = shouldScale || twoHandedTurn;
             twoHandedWorldGrab.canScale = shouldScale;
@@ -117,7 +119,8 @@ namespace BetterVR
                 }
                 else if (leftHandWorldGrab.enabled == false)
                 {
-                    if (!inHandTrackingMode ||
+                    if ((!inHandTrackingMode || CanScaleOrMoveByGesture(HandRole.RightHand))  ||
+                        !MenuAutoGrab.hasMenu ||
                         (!wasHoldingLeftHandTriggerAndGrip && IsCloseToWaist(BetterVRPluginHelper.leftControllerCenter.position)))
                     {
                         leftHandWorldGrab.enabled = true;
@@ -134,7 +137,8 @@ namespace BetterVR
                 }
                 else if (rightHandWorldGrab.enabled == false)
                 {
-                    if (!inHandTrackingMode ||
+                    if ((!inHandTrackingMode || CanScaleOrMoveByGesture(HandRole.LeftHand)) ||
+                        !MenuAutoGrab.hasMenu ||
                         (!wasHoldingRightHandTriggerAndGrip && IsCloseToWaist(BetterVRPluginHelper.rightControllerCenter.position)))
                     {
                         rightHandWorldGrab.enabled = true;
@@ -236,50 +240,34 @@ namespace BetterVR
                 ViveInput.GetAxis(handRole, ControllerAxis.PinkyCurl) < 0.4f;
         }
 
-        internal static bool CanOpenLeftMenuByGesture()
+        internal static bool CanOpenMenuByGesture(HandRole handRole)
         {
-            if (!IsPeaceGesture(HandRole.LeftHand)) return false;
-
-            if (!ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.AKeyTouch) &&
-                !ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.BkeyTouch))
-            {
-                return false;
-            }
-
-            return TightGrip(HandRole.RightHand) && ViveInput.GetPressUpEx<HandRole>(HandRole.RightHand, ControllerButton.Trigger);
+            if (!inHandTrackingMode) return false;
+            if (!ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.AKeyTouch) &&
+                !ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.BkeyTouch)) return false;
+            return ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.IndexCurl) < 0.3f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.MiddleCurl) < 0.3f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.RingCurl) > 0.3f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.PinkyCurl) < 0.3f;
         }
 
-        internal static bool CanOpenRightMenuByGesture()
+        internal static bool CanCloseMenuByGesture(HandRole handRole)
         {
-            if (!IsPeaceGesture(HandRole.RightHand)) return false;
-
-            if (!ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.AKeyTouch) &&
-                !ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.BkeyTouch))
-            {
-                return false;
-            }
-
-            return TightGrip(HandRole.LeftHand) && ViveInput.GetPressUpEx<HandRole>(HandRole.LeftHand, ControllerButton.Trigger);
+            return handRole != HandRole.Invalid && IsChillGesture(handRole);
         }
 
-        internal static bool CanCloseMenuByGesture()
+        internal static bool CanScaleByGesture()
         {
-            if (!TightGrip(HandRole.LeftHand) || !TightGrip(HandRole.RightHand)) return false;
+            return CanScaleOrMoveByGesture(HandRole.LeftHand) && CanScaleOrMoveByGesture(HandRole.RightHand);
+        }
 
-            if (!ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.AKeyTouch) &&
-                !ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.BkeyTouch))
-            {
-                return false;
-            }
-
-            if (!ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.AKeyTouch) &&
-                !ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.BkeyTouch))
-            {
-                return false;
-            }
-
-            return ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.Trigger) &&
-                ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.Trigger);
+        internal static bool CanScaleOrMoveByGesture(HandRole handRole)
+        {
+            return inHandTrackingMode &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.IndexCurl) < 0.4f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.MiddleCurl) > 0.7f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.RingCurl) < 0.4f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.PinkyCurl) > 0.7f;
         }
 
         private static void UpdateHandTrackingMode()
@@ -309,15 +297,6 @@ namespace BetterVR
                     inHandTrackingMode = true;
                 }
             }
-
-            if (inHandTrackingMode)
-            {
-                var buttonChecks = GameObject.FindObjectsOfType<Illusion.Component.UI.MouseButtonCheck>();
-                foreach (var check in buttonChecks)
-                {
-                    check.isOnDrag = check.isOnBeginDrag = false;
-                }
-            }
         }
 
         private static void UpdateCursorAttachPosition()
@@ -341,6 +320,43 @@ namespace BetterVR
                 else {
                     BetterVRPluginHelper.rightCursorAttach.localPosition = new Vector3(0, 0.0625f, 0.125f);
                 }
+            }
+        }
+
+        internal static void PlaceTouchModeRaycasters()
+        {
+            if (leftRaycaster)
+            {
+                if (originalLeftRaycasterPosition == null) originalLeftRaycasterPosition = leftRaycaster.transform.localPosition;
+                leftRaycaster.FarDistance = inHandTrackingMode ? 0.08f : 20f;
+                if (inHandTrackingMode && !TightGrip(HandRole.RightHand)) {
+                    var index = BetterVRPluginHelper.leftGlove?.GetComponent<FingerPoseUpdater>()?.index;
+                    if (index) leftRaycaster.transform.position = index.position;
+                }
+            }
+            if (rightRaycaster)
+            {
+                if (originalRightRaycasterPosition == null) originalRightRaycasterPosition = rightRaycaster.transform.localPosition;
+                rightRaycaster.FarDistance = inHandTrackingMode ? 0.08f : 20f;
+                if (inHandTrackingMode && !TightGrip(HandRole.LeftHand))
+                {
+                    var index = BetterVRPluginHelper.rightGlove?.GetComponent<FingerPoseUpdater>()?.index;
+                    if (index) rightRaycaster.transform.position = index.position;
+                }
+            }
+        }
+
+        internal static void RestoreRaycasters()
+        {
+            if (leftRaycaster)
+            {
+                leftRaycaster.FarDistance = 20f;
+                if (originalLeftRaycasterPosition != null) leftRaycaster.transform.localPosition = originalLeftRaycasterPosition.Value;
+            }
+            if (rightRaycaster)
+            {
+                rightRaycaster.FarDistance = 20f;
+                if (originalRightRaycasterPosition != null) rightRaycaster.transform.localPosition = originalRightRaycasterPosition.Value;
             }
         }
 
@@ -575,39 +591,50 @@ namespace BetterVR
             private Transform controllerCenter;
             private Vector3? originalScale;
             private float? originalLaserWidth;
+            private CanvasGroup selectMenu;
             private CanvasGroup menu;
+            private Transform selectMenuOriginalTransform;
             private bool isInUse = false;
             internal HandRole handRole { get; private set; } = HandRole.Invalid;
+            internal static bool hasMenu { get; private set; } 
 
             void Awake()
             {
                 if (cgMenuField == null) cgMenuField = typeof(HS2VR.OpenUICrtl).GetField("cgMenu", BindingFlags.Instance | BindingFlags.NonPublic);
             }
 
+            void OnRenderObject()
+            {
+                if (isInUse) VRControllerInput.PlaceTouchModeRaycasters();
+            }
+
             void Update()
             {
                 if (menu == null)
                 {
+                    // The controller manager might become stale later, clear the cache.
+                    controllerManager = null;
                     var ctrl = GetComponent<HS2VR.OpenUICrtl>();
                     if (ctrl != null) menu = (CanvasGroup)cgMenuField.GetValue(ctrl);
+                    if (menu == null) menu = selectMenu = FindSelectMenu();
                 }
 
                 var camera = BetterVRPluginHelper.VRCamera;
 
                 if (menu == null || camera == null)
                 {
-                    // Allow toggling right hand laser in select scene.
-                    if (CanOpenLeftMenuByGesture())
+                    // Allow toggling right hand laser in title scene.
+                    if (CanOpenMenuByGesture(HandRole.LeftHand))
                     {
                         controllerManager?.SetRightLaserPointerActive(true);
                         controllerManager?.UpdateActivity();
                     }
-                    else if (CanOpenRightMenuByGesture())
+                    else if (CanOpenMenuByGesture(HandRole.RightHand))
                     {
                         controllerManager?.SetLeftLaserPointerActive(true);
                         controllerManager?.UpdateActivity();
                     }
-                    else if (CanCloseMenuByGesture())
+                    else if (CanCloseMenuByGesture(HandRole.LeftHand) || CanCloseMenuByGesture(HandRole.RightHand))
                     {
                         controllerManager?.SetLeftLaserPointerActive(false);
                         controllerManager?.SetRightLaserPointerActive(false);
@@ -615,10 +642,12 @@ namespace BetterVR
                     }
                     // The controller manager might become stale later, clear the cache.
                     controllerManager = null;
+                    hasMenu = false;
                     return;
                 }
+                hasMenu = true;
 
-                if (ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.Menu))
+                if (ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.Menu) || CanOpenMenuByGesture(HandRole.LeftHand))
                 {
                     leftButtonPressTime += Time.deltaTime;
                 }
@@ -627,7 +656,7 @@ namespace BetterVR
                     leftButtonPressTime = 0;
                 }
 
-                if (ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.Menu))
+                if (ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.Menu) || CanOpenMenuByGesture(HandRole.RightHand))
                 {
                     rightButtonPressTime += Time.deltaTime;
                 }
@@ -636,20 +665,22 @@ namespace BetterVR
                     rightButtonPressTime = 0;
                 }
 
-                if (isInUse && menu.alpha < 0.9f)
+                if (isInUse) 
                 {
-                    // Reset menu scale to vanilla size and close it.
-                    if (originalScale != null) menu.transform.localScale = (Vector3)originalScale;
-                    if (originalLaserWidth != null) SetLaserWidths((float)originalLaserWidth);
-                    isInUse = false;
+                    if (menu.alpha < 0.9f)
+                    {
+                        // Reset menu scale to vanilla size and close it.
+                        if (originalScale != null && menu != selectMenu) menu.transform.localScale = (Vector3)originalScale;
+                        if (originalLaserWidth != null) SetLaserWidths((float)originalLaserWidth);
+                        isInUse = false;
 
-                    controllerManager?.SetLeftLaserPointerActive(false);
-                    controllerManager?.SetRightLaserPointerActive(false);
-                    controllerManager?.UpdateActivity();
-                    if (originalLeftRaycasterPosition != null && leftRaycaster) leftRaycaster.transform.localPosition = originalLeftRaycasterPosition.Value;
-                    if (originalRightRaycasterPosition != null && rightRaycaster) rightRaycaster.transform.localPosition = originalRightRaycasterPosition.Value;
-                    handRole = HandRole.Invalid;
-                    return;
+                        controllerManager?.SetLeftLaserPointerActive(false);
+                        controllerManager?.SetRightLaserPointerActive(false);
+                        controllerManager?.UpdateActivity();
+                        handRole = HandRole.Invalid;
+                        VRControllerInput.RestoreRaycasters();
+                        return;
+                    }
                 }
 
                 var previousHandRole = handRole;
@@ -661,35 +692,24 @@ namespace BetterVR
                 else if (rightButtonPressTime >= BUTTON_PRESS_TIME_THRESHOLD)
                 {
                     handRole = HandRole.RightHand;
-                    controllerCenter = BetterVRPluginHelper.rightControllerCenter;
-                }
-                else if (CanOpenLeftMenuByGesture())
-                {
-                    handRole = HandRole.LeftHand;
-                    controllerCenter = BetterVRPluginHelper.leftControllerCenter;
-                    var raycaster = rightRaycaster;
-                    if (raycaster)
-                    {
-                        if (originalRightRaycasterPosition == null) originalRightRaycasterPosition = raycaster.transform.localPosition;
-                        raycaster.transform.localPosition = -0.1f * Vector3.forward;
-                    }
-                }
-                else if (CanOpenRightMenuByGesture())
-                {
-                    handRole = HandRole.RightHand;
-                    controllerCenter = BetterVRPluginHelper.rightControllerCenter;
-                    var raycaster = leftRaycaster;
-                    if (raycaster)
-                    {
-                        if (originalLeftRaycasterPosition == null) originalLeftRaycasterPosition = raycaster.transform.localPosition;
-                        raycaster.transform.localPosition = -0.1f * Vector3.forward;
-                    }
+                    controllerCenter = BetterVRPluginHelper.rightControllerCenter;                    
                 }
                 else
                 {
-                    if (CanCloseMenuByGesture())
+                    if (CanCloseMenuByGesture(HandRole.LeftHand) || CanCloseMenuByGesture(HandRole.RightHand))
                     {
-                        menu.Enable(false);
+                        if (menu != selectMenu)
+                        {
+                            menu.Enable(false);
+                        }
+                        else if (selectMenuOriginalTransform != null)
+                        {
+                            controllerManager?.SetLeftLaserPointerActive(false);
+                            controllerManager?.SetRightLaserPointerActive(false);
+                            controllerManager?.UpdateActivity();
+                            menu.transform.SetPositionAndRotation(selectMenuOriginalTransform.position, selectMenuOriginalTransform.rotation);
+                            menu.transform.localScale = selectMenuOriginalTransform.localScale;
+                        }
                     }
                     handRole = HandRole.Invalid;
                 }
@@ -704,27 +724,83 @@ namespace BetterVR
                     menu.Enable(true, true, false);
 
                     // Scale to the right size.
-                    if (originalScale == null) originalScale = menu.transform.localScale;
+                    if (menu != selectMenu) {
+                        if (originalScale == null) originalScale = menu.transform.localScale;
+                    }
+                    else if (selectMenuOriginalTransform == null)
+                    {
+                        selectMenuOriginalTransform = new GameObject("SelectMenuOriginalTransform").transform;
+                        selectMenuOriginalTransform.parent = selectMenu.transform;
+                        selectMenuOriginalTransform.localPosition = Vector3.zero;
+                        selectMenuOriginalTransform.localRotation = Quaternion.identity;
+                        selectMenuOriginalTransform.localScale = Vector3.one;
+                        selectMenuOriginalTransform.SetParent(selectMenu.transform.parent, true);
+                    }
                     Vector3 newScale = controllerCenter.lossyScale / 4096f;
                     menu.transform.localScale =
                         menu.transform.parent == null ? newScale : newScale / menu.transform.parent.lossyScale.x;
 
                     SetLaserWidths(BetterVRPlugin.PlayerScale / 2f);
 
-                    // Hide the laser on the laser hand and show the laser on the other hand.
-                    controllerManager?.SetLeftLaserPointerActive(handRole != HandRole.LeftHand);
-                    controllerManager?.SetRightLaserPointerActive(handRole != HandRole.RightHand);
+                    if (inHandTrackingMode)
+                    {
+                        controllerManager?.SetLeftLaserPointerActive(true);
+                        controllerManager?.SetRightLaserPointerActive(true);
+                    }
+                    else
+                    {
+                        // Hide the laser on the laser hand and show the laser on the other hand.
+                        controllerManager?.SetLeftLaserPointerActive(handRole != HandRole.LeftHand);
+                        controllerManager?.SetRightLaserPointerActive(handRole != HandRole.RightHand);
+                    }
                     controllerManager?.UpdateActivity();
                 }
 
-                if (ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.Menu) ||
-                    CanOpenLeftMenuByGesture() || CanOpenRightMenuByGesture())
+                if (CanOpenMenuByGesture(HandRole.LeftHand)) {
+                    var glove = BetterVRPluginHelper.leftGlove.transform;
+                    // Move the menu with the hand.
+                    menu.transform.SetPositionAndRotation(
+                        glove.TransformPoint(-3, -1, 0),
+                        glove.rotation * Quaternion.Euler(-45, -90, 180));
+                } 
+                else if (CanOpenMenuByGesture(HandRole.RightHand))
+                {
+                    var glove = BetterVRPluginHelper.rightGlove.transform;
+                    // Move the menu with the hand.
+                    menu.transform.SetPositionAndRotation(
+                        glove.TransformPoint(3, -1, 0),
+                        glove.rotation * Quaternion.Euler(-45, 90, 180));
+                }
+                else if (ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.Menu))
                 {
                     // Move the menu with the hand.
                     menu.transform.SetPositionAndRotation(
                         controllerCenter.TransformPoint(0, 1f / 32, 3f / 16),
                         controllerCenter.rotation * Quaternion.Euler(90, 0, 0));
                 }
+            }
+
+            internal static bool CanClickByTouch(HandRole handRole)
+            {
+                return InTouchMode(handRole) && ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.Grip);
+            }
+
+            internal static bool InTouchMode(HandRole handRole)
+            {
+                if (!VRControllerInput.inHandTrackingMode || !hasMenu) return false;
+                var otherHandRole = handRole == HandRole.LeftHand ? HandRole.RightHand : HandRole.LeftHand;
+                return !TightGrip(otherHandRole);
+            }
+
+            private CanvasGroup FindSelectMenu()
+            {
+                var systemButton = GameObject.Find("btnOption");
+                if (systemButton == null) return null;
+                for (var t = systemButton.transform.parent; t != null; t = t.parent)
+                {
+                    if (t.name == "MainCanvas") return t.GetComponent<CanvasGroup>();
+                }
+                return null;
             }
 
             private void SetLaserWidths(float width)

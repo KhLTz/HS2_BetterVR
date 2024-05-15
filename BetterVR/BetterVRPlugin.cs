@@ -14,7 +14,7 @@ namespace BetterVR
     public partial class BetterVRPlugin : BaseUnityPlugin 
     {
         public const string GUID = "BetterVR";
-        public const string Version = "0.61";
+        public const string Version = "0.62";
         internal static new ManualLogSource Logger { get; private set; }
 
 #if DEBUG
@@ -53,9 +53,13 @@ namespace BetterVR
             BetterVRPluginHelper.UpdatePrivacyScreen(Color.white);
         }
 
+        public static float touchInteractionCooldown;
+
         // Check for controller input changes
         internal void Update()
         {
+            if (touchInteractionCooldown > 0) touchInteractionCooldown -= Time.deltaTime;
+
             if (leftHandStripUpdater == null) leftHandStripUpdater = new StripUpdater(VRControllerInput.roleL);
             leftHandStripUpdater?.CheckStrip(BetterVRPlugin.GestureStrip.Value == "Left hand");
 

@@ -66,18 +66,13 @@ namespace BetterVR
                 stabilizer.positionThreshold = 1 / 32f;
                 stabilizer.rotationThreshold = 30;
             }
-            else if (VRControllerInput.inHandTrackingMode)
-            {
-                // Hand tracking can flicker a lot and needs more stabilization.
-                stabilizer.positionThreshold = 0;
-                stabilizer.rotationThreshold = 2;
-            }
             else
             {
                 // The vanilla laser pointer stabilization is too aggressive and causes a laggy feel.
                 // Reduce the thresholds for a better balance between stability and responsiveness.
                 stabilizer.positionThreshold = 0;
-                stabilizer.rotationThreshold = 0.5f;
+                // Hand tracking can flicker a lot and needs more stabilization.
+                stabilizer.rotationThreshold = VRControllerInput.inHandTrackingMode ? 1f : 0.5f;
             }
         }
     }

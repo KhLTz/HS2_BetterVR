@@ -81,8 +81,8 @@ namespace BetterVR
                 UpdateCursorAttachPosition();
                 RestoreRaycasters();
             }
-            VRControllerPointer.UpdateStabilizer(BetterVRPluginHelper.GetLeftHand(), freeze: TightGrip(HandRole.RightHand));
-            VRControllerPointer.UpdateStabilizer(BetterVRPluginHelper.GetRightHand(), freeze: TightGrip(HandRole.LeftHand));
+            VRControllerPointer.UpdateStabilizer(BetterVRPluginHelper.GetLeftHand(), ShouldFreezeLaser(HandRole.LeftHand));
+            VRControllerPointer.UpdateStabilizer(BetterVRPluginHelper.GetRightHand(), ShouldFreezeLaser(HandRole.RightHand));
 
             Transform vrOrigin = BetterVRPluginHelper.VROrigin?.transform;
             if (!vrOrigin) return;
@@ -237,7 +237,16 @@ namespace BetterVR
 
             return ViveInput.GetAxis(handRole, ControllerAxis.IndexCurl) < 0.5f &&
                 ViveInput.GetAxis(handRole, ControllerAxis.MiddleCurl) > 0.6f &&
+                ViveInput.GetAxis(handRole, ControllerAxis.RingCurl) < 0.7f &&
                 ViveInput.GetAxis(handRole, ControllerAxis.PinkyCurl) < 0.4f;
+        }
+
+        internal static bool ShouldFreezeLaser(HandRole handRole)
+        {
+            if (ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.AKeyTouch) ||
+                ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.BkeyTouch)) return false;
+            var otherHandRole = handRole == HandRole.LeftHand ? HandRole.RightHand : HandRole.LeftHand;
+            return TightGrip(otherHandRole) && ViveInput.GetAxisEx<HandRole>(otherHandRole, ControllerAxis.IndexCurl) > 0.8f;
         }
 
         internal static bool CanOpenMenuByGesture(HandRole handRole)
@@ -787,9 +796,7 @@ namespace BetterVR
 
             internal static bool InTouchMode(HandRole handRole)
             {
-                if (!VRControllerInput.inHandTrackingMode || !hasMenu) return false;
-                var otherHandRole = handRole == HandRole.LeftHand ? HandRole.RightHand : HandRole.LeftHand;
-                return !TightGrip(otherHandRole);
+                return VRControllerInput.inHandTrackingMode && hasMenu && !ShouldFreezeLaser(handRole);
             }
 
             private CanvasGroup FindSelectMenu()

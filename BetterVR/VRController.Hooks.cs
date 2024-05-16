@@ -144,7 +144,7 @@ namespace BetterVR
             HSceneFinishPatch();
         }
 
-        private const float MIN_TOUCH_INTERACTION_INTERVAL = 0.125f;
+        private const float MIN_TOUCH_INTERACTION_INTERVAL = 0.5f;
         private static Selectable lastTouchedSelectable;
 
         [HarmonyPostfix, HarmonyPatch(typeof(Selectable), nameof(Selectable.OnPointerEnter))]
@@ -156,8 +156,9 @@ namespace BetterVR
 
             lastTouchedSelectable = __instance;
             var cooldown = BetterVRPlugin.touchInteractionCooldown;
+            if (cooldown > 0) return;
             BetterVRPlugin.touchInteractionCooldown = MIN_TOUCH_INTERACTION_INTERVAL;
-            if (cooldown > 0 || !VRControllerInput.MenuAutoGrab.CanClickByTouch(handRole)) return;
+            if (!VRControllerInput.MenuAutoGrab.CanClickByTouch(handRole)) return;
 
             var clickables = __instance.GetComponentsInChildren<IPointerClickHandler>();
             // Enable touch-clicking in hand tracking mode

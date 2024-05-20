@@ -1,9 +1,9 @@
-using TMPro;
 using HTC.UnityPlugin.Pointer3D;
 using HTC.UnityPlugin.Vive;
 using Illusion.Extensions;
 using System;
 using System.Reflection;
+using TMPro;
 using UnityEngine;
 
 namespace BetterVR
@@ -244,9 +244,23 @@ namespace BetterVR
         internal static bool ShouldFreezeLaser(HandRole handRole)
         {
             if (ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.AKeyTouch) ||
-                ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.BkeyTouch)) return false;
+                ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.BkeyTouch) ||
+                !TightGrip(handRole)) return false;
             var otherHandRole = handRole == HandRole.LeftHand ? HandRole.RightHand : HandRole.LeftHand;
             return TightGrip(otherHandRole) && ViveInput.GetAxisEx<HandRole>(otherHandRole, ControllerAxis.IndexCurl) > 0.8f;
+        }
+
+        internal static bool CanGrabToy(HandRole handRole)
+        {
+            if (inHandTrackingMode)
+            {
+                return ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.Grip) &&
+                    ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.AKeyTouch) &&
+                    ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.PinkyCurl) < 0.3f;
+            }
+
+            return ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.Grip) &&
+                ViveInput.GetPressEx<HandRole>(handRole, ControllerButton.AKey);
         }
 
         internal static bool CanOpenMenuByGesture(HandRole handRole)
@@ -500,6 +514,8 @@ namespace BetterVR
             Transform worldPivot;
             Transform vrOrginPlacer;
             Transform stabilizer;
+            Quaternion vrOriginStartRotation;
+            Quaternion vrOriginInverseStartRotation;
             Vector3 desiredControllerPosition;
 
             void Awake()
@@ -513,8 +529,13 @@ namespace BetterVR
 
             void OnEnable()
             {
+
+                var vrOrigin = BetterVRPluginHelper.VROrigin;
+                if (!vrOrigin) return;
+
                 // Place the world pivot at neutral rotation.
-                worldPivot.rotation = Quaternion.identity;
+                worldPivot.rotation = vrOriginStartRotation = vrOrigin.transform.rotation;
+                vrOriginInverseStartRotation = Quaternion.Inverse(vrOriginStartRotation);
                 // Pivot the world around the controller.
                 worldPivot.localPosition = Vector3.zero;
 
@@ -528,15 +549,17 @@ namespace BetterVR
                 var vrOrigin = BetterVRPluginHelper.VROrigin;
                 if (!vrOrigin) return;
 
+
                 if (!BetterVRPlugin.IsOneHandedTurnEnabled())
                 {
                     worldPivot.rotation = Quaternion.identity;
                 }
-                else if (!BetterVRPlugin.AllowVerticalRotation.Value)
+                else if (!BetterVRPlugin.AllowVerticalRotation.Value ||
+                    (inHandTrackingMode && !CanScaleOrMoveByGesture(HandRole.LeftHand) && !CanScaleOrMoveByGesture(HandRole.RightHand)))
                 {
                     // Remove vertical rotation.
-                    var angles = worldPivot.rotation.eulerAngles;
-                    worldPivot.rotation = Quaternion.Euler(0, angles.y, 0);
+                    var angles = (vrOriginInverseStartRotation * worldPivot.rotation).eulerAngles;
+                    worldPivot.rotation = vrOriginStartRotation * Quaternion.Euler(0, angles.y, 0);
                 }
 
                 // Make sure the position and rotation of the vrOriginPlacer's parent is the same as teh world pivot.
@@ -546,7 +569,7 @@ namespace BetterVR
                 vrOrginPlacer.SetPositionAndRotation(vrOrigin.transform.position, vrOrigin.transform.rotation);
 
                 // Move the vrOriginPlacer's parent to where the controller should be to see how that affects vrOriginPlacer.
-                vrOrginPlacer.parent.SetPositionAndRotation(desiredControllerPosition, Quaternion.identity);
+                vrOrginPlacer.parent.SetPositionAndRotation(desiredControllerPosition, vrOriginStartRotation);
 
                 // Move and rotate vrOrgin to restore the original position and rotation of the controller.
                 vrOrigin.transform.SetPositionAndRotation(vrOrginPlacer.position, vrOrginPlacer.rotation);

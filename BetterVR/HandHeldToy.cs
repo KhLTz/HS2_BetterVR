@@ -43,7 +43,9 @@ namespace BetterVR
                 return;
             }
 
-            if (ViveInput.GetPressDownEx<HandRole>(HandRole.LeftHand, ControllerButton.Grip))
+            var stayAttachedToBody = IsAttachedToBody() && VRControllerInput.inHandTrackingMode;
+
+            if (!stayAttachedToBody && ViveInput.GetPressDownEx<HandRole>(HandRole.LeftHand, ControllerButton.Grip))
             {
                 var controllerCenter = BetterVRPluginHelper.leftControllerCenter;
                 if (controllerCenter != null &&
@@ -53,7 +55,7 @@ namespace BetterVR
                     AttachAndBringToRangeOf(controllerCenter);
                 }
             }
-            else if (ViveInput.GetPressDownEx<HandRole>(HandRole.RightHand, ControllerButton.Grip))
+            else if (!stayAttachedToBody && ViveInput.GetPressDownEx<HandRole>(HandRole.RightHand, ControllerButton.Grip))
             {
                 var controllerCenter = BetterVRPluginHelper.rightControllerCenter;
                 if (controllerCenter != null && GrabDistance(controllerCenter.position) < controllerCenter.transform.lossyScale.x * GRAB_RANGE)
@@ -121,7 +123,7 @@ namespace BetterVR
         {
             if (transform.parent == null || mode == 0 || !hSpeedGesture) return false;
 
-            HandRole currentHand = HandRole.Invalid;
+            HandRole currentHand;
             if (hSpeedGesture.roleProperty == VRControllerInput.roleL)
             {
                 currentHand = HandRole.LeftHand;
@@ -134,8 +136,7 @@ namespace BetterVR
                 return false;
             }
 
-            return ViveInput.GetPressEx<HandRole>(currentHand, ControllerButton.Grip) &&
-                ViveInput.GetPressEx<HandRole>(currentHand, ControllerButton.AKey);
+            return VRControllerInput.CanGrabToy(currentHand);
         }
 
         private void AttachToBody()

@@ -22,7 +22,7 @@ Forked from thojmr/HS2_BetterVR, this plugin for `Honey Select 2 VR` fixes a han
     - Press trigger or close radial menu to perform quick actions
 - Adds feature that attaches a small in-game GUI menu to the hand
     - Long press B/Y to activate the menu and attach it to hand
-    - Release B/Y to plce the menu in the air
+    - Release B/Y to place the menu in the air
 - Adds feature of using hand movement to dress/undress.
     - Press down trigger close to cloth, hold trigger and drag away to undress
     - Press down trigger some distance away from character, hold trigger and drag onto character to dress

@@ -38,7 +38,7 @@ Forked from thojmr/HS2_BetterVR, this plugin for `Honey Select 2 VR` fixes a han
         - In Aibu mode the animation can be started or stopped solely by changing hand speed without using pad or stick 
     - Move hand, mouth, or toy close to certain body parts and start moving
     - Haptic feedback (if enabled) indicates that this feature is in action
-    - When the haptic feedback feels like a heart beat, it means the pleasurr gauge is hit
+    - When the haptic feedback feels like a heart beat, it means the pleasure gauge is hit
     - Also look for a heart icon that may show up which indicates pleasure gauge hit
 - Adds support for hand gestures supporting Index controllers and emulated Index controllers
     - Enable finger tracking feature in settings

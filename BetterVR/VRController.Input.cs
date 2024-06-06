@@ -286,11 +286,15 @@ namespace BetterVR
 
         internal static bool CanScaleOrMoveByGesture(HandRole handRole)
         {
-            return inHandTrackingMode &&
-                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.IndexCurl) < 0.4f &&
+            if (!inHandTrackingMode) return false;
+            if (ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.IndexCurl) < 0.4f &&
                 ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.MiddleCurl) > 0.7f &&
                 ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.RingCurl) < 0.4f &&
-                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.PinkyCurl) > 0.7f;
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.PinkyCurl) > 0.7f) return true;
+            return ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.IndexCurl) > 0.7f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.MiddleCurl) < 0.4f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.RingCurl) > 0.7f &&
+                ViveInput.GetAxisEx<HandRole>(handRole, ControllerAxis.PinkyCurl) < 0.3f;
         }
 
         private static void UpdateHandTrackingMode()
@@ -344,6 +348,12 @@ namespace BetterVR
                     BetterVRPluginHelper.rightCursorAttach.localPosition = new Vector3(0, 0.0625f, 0.125f);
                 }
             }
+        }
+
+        internal static void ResumeMovement()
+        {
+            var preventMovement = BetterVRPluginHelper.VROrigin?.GetComponent<PreventMovement>();
+            if (preventMovement) preventMovement.enabled = false;
         }
 
         internal static void PlaceTouchModeRaycasters()
@@ -431,6 +441,7 @@ namespace BetterVR
             {
                 if (canScale) InitializeScaleDraggingFactor();
 
+
                 var vrOrigin = BetterVRPluginHelper.VROrigin;
                 if (vrOrigin == null)
                 {
@@ -439,6 +450,7 @@ namespace BetterVR
                 }
                 else
                 {
+                    ResumeMovement();
                     desiredHandMidpointWorldCoordinates = vrOrigin.transform.TransformPoint(handMidpointLocal);
                     lastHandPositionDifference = VivePose.GetPose(roleR).pos - VivePose.GetPose(roleL).pos;
                 }
@@ -529,9 +541,10 @@ namespace BetterVR
 
             void OnEnable()
             {
-
                 var vrOrigin = BetterVRPluginHelper.VROrigin;
                 if (!vrOrigin) return;
+
+                ResumeMovement();
 
                 // Place the world pivot at neutral rotation.
                 worldPivot.rotation = vrOriginStartRotation = vrOrigin.transform.rotation;
@@ -596,11 +609,17 @@ namespace BetterVR
 
                 // Stop attempting to restore camera transform if there is any input that might move the camera.
                 if (activeTime > EXPIRATION_TIME ||
-                    ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.Grip) ||
-                    ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.Grip) ||
                     Mathf.Abs(BetterVRPluginHelper.GetLeftHandPadStickCombinedOutput().x) > 0.25f ||
                     Mathf.Abs(BetterVRPluginHelper.GetRightHandPadStickCombinedOutput().x) > 0.25f ||
                     !Manager.HSceneManager.isHScene)
+                {
+                    this.enabled = false;
+                    return;
+                }
+
+                if (!inHandTrackingMode &&
+                    (ViveInput.GetPressEx<HandRole>(HandRole.LeftHand, ControllerButton.Grip) ||
+                    ViveInput.GetPressEx<HandRole>(HandRole.RightHand, ControllerButton.Grip)))
                 {
                     this.enabled = false;
                     return;

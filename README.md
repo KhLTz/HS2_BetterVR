@@ -43,14 +43,22 @@ Forked from thojmr/HS2_BetterVR, this plugin for `Honey Select 2 VR` fixes a han
 - Adds support for hand gestures supporting Index controllers and emulated Index controllers
     - Enable finger tracking feature in settings
     - Move middle finger and pinky independently from each other to enter hand gesture mode
-    - In hand tracking mode, two-handed world scaling is disabled
-    - In hand tracking mode, one-handed world grab can only work when grab character waist
+    - In hand tracking mode, two-handed world scaling is disabled unless both hands have:
+        - index fingers and ring fingers curled and
+        - middle fingers and pinkies extended
+    - In hand tracking mode, one-handed world grab can only work when grab character waist and vertical rotation is locked unless
+        - the index finger and the ring finger are both curled and
+        - the middle finger and the pinky are both extended
     - Hold Shaka sign to pull up radial menu
     - Hold ILY sign while touching character to start H
     - Hold ILY sign for 3 seconds to finish current H stage
-    - Hold peace sign with one hand and gesture come-over sign with other hand to pull up menu
-    - Gesture come-over sign with both hands to close menu
+    - Curl ring finger and extend all other fingers to pull up menu, use Shaka sign to close the menu
+        - When menu is open, the laser ray is shortened and operates in touch mode
+        - In touch mode, contact with the menu constitute a click
+        - In touch mode, open the palm and extend all fingers to pan without clicking
+        - Make a handgun sign with the touching hand and extend all fingers on the other hand to freeze the laser ray and pause touch mode 
     - Stretch index finger and pinky and pinch middle finger toward palm/thumb near clothes and start dragging to adjust clothing level
+    - When holding the hand-held toy, extend pinky and curl all other fingers and thumb to attach the toy to HMD
     - Press A, B, X, or Y button to exit hand gesture mode
 - Adds option to skip title scene on game start and go straight to select scene.
 - Adds option to unlock all positions regardless of character state.

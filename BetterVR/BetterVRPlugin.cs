@@ -14,7 +14,7 @@ namespace BetterVR
     public partial class BetterVRPlugin : BaseUnityPlugin 
     {
         public const string GUID = "BetterVR";
-        public const string Version = "0.62";
+        public const string Version = "0.63";
         internal static new ManualLogSource Logger { get; private set; }
 
 #if DEBUG
